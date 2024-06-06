@@ -1,6 +1,7 @@
 
 import pandas as pd
 import datetime as dt
+from flask import Flask, render_template, request, jsonify
 
 # Sample DataFrame
 data = {
@@ -8,6 +9,39 @@ data = {
     'Balance': [1000, 1500, 1700, 1600, 1800]
 }
 df = pd.DataFrame(data)
+
+app = Flask(__name__)
+
+
+
+# Initialize the variable
+variable_value = 50
+
+@app.route('/')
+def display_results():
+    return render_template('index.html', variable_value=variable_value)
+
+@app.route('/update_value', methods=['POST'])
+def update_value():
+    global variable_value
+    variable_value = request.json.get('value')
+    return jsonify(variable_value=variable_value)
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+
+"""
+@app.route('/')
+def display_results():
+    return render_template('results.html', table=df.to_html())
+
+if __name__ == '__main__':
+    app.run(debug=True)
+"""
+
+"""
 df['Date'] = pd.to_datetime(df['Date'])
 df.set_index('Date', inplace=True)
 
@@ -19,7 +53,7 @@ monthly_differences = monthly_df.diff()
 
 print(monthly_differences)
 
-"""
+
 df.loc["2023-05-02", 'GOOGL'] = 1000
 df.loc["2023-07-02", 'GOOGL'] = 2000
 print(df)
@@ -28,7 +62,9 @@ try:
 except Exception as e:
     print("Not found!")
 print('GOOGL' in df.columns)
-"""
+
+
+
 
 #print(p.index['GOOGL'])
 print()
@@ -56,3 +92,5 @@ cumulative_df = df.pivot_table(index='date', columns='name', values='cumulative_
 cumulative_df.reset_index(inplace=True)
 
 print(cumulative_df)
+
+"""

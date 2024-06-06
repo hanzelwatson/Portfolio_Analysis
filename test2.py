@@ -2,22 +2,29 @@ import pandas as pd
 import datetime as dt
 import numpy as np
 
+print("Portfolio Analysis")
+print("Submission by Maya Gusak")
+print("11.06.2024")
+print()
+print()
+
 # Read the transaction data
 transactions = pd.read_csv('tx_etf.csv', parse_dates=['date']).set_index('date', drop=True)
 prices = pd.read_csv('px_etf.csv', parse_dates=['Date']).set_index('Date', drop=True)
 
-
 tx = transactions.iloc[0:700]
 pd.to_datetime(tx.index)
 
+# Add a column that equals qty if order=BUY and -qty if order=SELL
 tx['adjusted_qty'] = tx.apply(lambda row: row['qty'] if row['order'] == 'BUY' else -row['qty'], axis=1)
 
+print("Read from file: transactions")
 print(tx.head())
+print()
 
-# Calculate cumulative sum for each name
+# Calculate the cumulative sum of the signed qty column to get the position
 tx['positions'] = (tx.groupby('ticker'))['adjusted_qty'].cumsum()
 
-print(tx.head())
 
 # Pivot the DataFrame to get the desired format
 positions = tx.pivot_table(index='date', columns='ticker', values='positions', fill_value=0)
@@ -25,16 +32,28 @@ positions = tx.pivot_table(index='date', columns='ticker', values='positions', f
 # Reset index to get 'date' as a column
 positions.reset_index(inplace=False)
 
+
+print("Reconstructed portfolio positions...")
 print(positions.head())
+print()
+# monthly and yearly portfolio compositions
+print("Monthly positions...")
+print(positions.resample('ME').last())
+print()
+print("Annual positions...")
+print(positions.resample('YE').last())
+print()
+print()
 
 
+
+# Make a new Data Frame to compute the values in the portfolio
+# The trade order may have been placed on the weekend: in that case use Monday's price
+# Assumption: Only one order per ETF is placed per week... otherwisecompute the cumulative sum over weekend dates 
 values = pd.DataFrame()
-
-
-
 for date in positions.index:
     for ticker in positions.columns:
-        # The trade may have been placed on the weekend: in that case use Monday's price
+        
         
         price_date = date
         while price_date not in prices.index:
@@ -54,78 +73,96 @@ for date in positions.index:
 
         
 
-
-# any way to print values without making a new data frame?
-
-# calculate the values
+print("Portfolio values for each ETF...")
 print(values.head())
+print()
 
-# calculate the portfolio values
+# Calculate the portfolio values
 portfolio = values.sum(axis=1, numeric_only=True)
+print("Portfolio values...")
 print(portfolio.head())
+print()
 
-# calculate the performance
-# Resample to get the last entry of each month
-monthly = portfolio.resample('ME').last()
-print(monthly.head())
+# Calculate the portfolio monthly performance
+# Resample to get the last entry of each month and compute the monthly differences / returns
+monthly = portfolio.resample('ME').last().rename_axis("Date").rename("Monthly Value")
+monthly_differences = monthly.diff().iloc[1:].dropna().rename_axis("Date").rename("Monthly Returns USD")
+monthly_pct_change = monthly.pct_change().iloc[1:].dropna().rename_axis("Date").rename("Monthly Returns %")
 
-# Compute the monthly differences
-monthly_differences = monthly.diff().iloc[1:].dropna()
-monthly_pct_change = monthly.pct_change().iloc[1:].dropna()
+print("Monthly Analysis:")
+print()
+print()
+print("Monthly values...")
+print(monthly)
+print()
+print("Monthly returns (USD)...")
+print(monthly_differences)
+print()
+print("Monthly returns (%)...")
 print(monthly_pct_change)
-# Assuming that we start off with an empty portfolio
-# monthly_differences.iloc[0] = monthly.iloc[0]
+print()
+print()
 
-annually = portfolio.resample('YE').last()
-print(annually)
+# Calculate the portfolio annual performance
+# Resample to get the last entry of each year and compute the annual differences / returns
+annual = portfolio.resample('YE').last().rename_axis("Date").rename("Value")
+annual_differences = annual.diff().iloc[1:].dropna().rename_axis("Date").rename("Annual Returns USD")
+annual_pct_change = annual.pct_change().iloc[1:].dropna().rename_axis("Date").rename("Annual Returns %")
+
+print("Annual Analysis:")
+print()
+print()
+print("Annual values...")
+print(annual)
+print()
+print("Annual returns (USD)...")
+print(annual_differences)
+print()
+print("Annual returns (%)...")
+print(annual_pct_change)
+print()
+print()
 
 
+print("Risk measures:")
+print()
 
+# Compute the volatility
+print("Monthly volatility: ", monthly_pct_change.std())
+print("Annual volatility: ", annual_pct_change.std())
+print()
 
-# Compute the annual differences
-annually_differences = annually.diff().iloc[1:].dropna()
-annually_pct_change = annually.pct_change().iloc[1:].dropna()
-# Assuming that we start off with an empty portfolio
-# annually_differences.iloc[0] = annually.iloc[0]
-
-print(annually_differences)
-print(annually_pct_change)
-
-
-
-# monthly and yearly portfolio compositions
-print(positions.resample('ME').last())
-print(positions.resample('YE').last())
-
-# volatility
-print(monthly_pct_change.std())
-print(annually_pct_change.std())
-
-# Value at Risk (VaR)
-# Calculate Value at Risk (VaR)
+# Compute the Value at Risk (VaR)
 confidence_level = 0.95
-print(monthly_pct_change.quantile(1 - confidence_level))
-print(annually_pct_change.quantile(1 - confidence_level))
+print("Monthly 95% VaR: ", monthly_pct_change.quantile(1 - confidence_level))
+print("Annual 95% VaR: ", annual_pct_change.quantile(1 - confidence_level))
+print()
 
 # Sharpe Ratio: measures the risk-adjusted return
 risk_free_rate = 0.01  # Example risk-free rate
-print((monthly_pct_change.mean() - risk_free_rate) / monthly_pct_change.std())
-print((annually_pct_change.mean() - risk_free_rate) / annually_pct_change.std())
+print("Monthly Sharpe Ratio 1% risk free rate: ", (monthly_pct_change.mean() - risk_free_rate) / monthly_pct_change.std())
+print("Annual Sharpe Ratio 1% risk free rate: ", (annual_pct_change.mean() - risk_free_rate) / annual_pct_change.std())
+print()
+print()
+
+print("More monthly risk measures...")
+print()
+
+# Sortino Ratio: similar to the Sharpe Ratio, but only considers downside risk
+downside_returns = monthly_pct_change.loc[lambda x: x < 0]
+sortino_ratio = (monthly_pct_change.mean() - risk_free_rate) / downside_returns.std()
+print("Sortino ratio (sampled monthly): ", sortino_ratio)
+print()
 
 # Maximum drawdown: the largest peak-to-trough decline in the portfolio value.
 cumulative_returns = (1 + monthly_pct_change).cumprod()
 peak = cumulative_returns.cummax()
 drawdown = (cumulative_returns - peak) / peak
 max_drawdown = drawdown.min()
-print("max_drawdown = ", max_drawdown)
+print("Max drawdown (sampled monthly): ", max_drawdown)
 
-# Sortino Ratio: similar to the Sharpe Ratio, but only considers downside risk
-downside_returns = monthly_pct_change.loc[lambda x: x < 0]
-sortino_ratio = (monthly_pct_change.mean() - risk_free_rate) / downside_returns.std()
-print("sortino_ratio = ", sortino_ratio)
 
 # need to give the monthly/annually_pct_change (aka the "returns") labels
-
 
 
 

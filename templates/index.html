@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slider Example</title>
+</head>
+<body>
+    <h1>Slider Example</h1>
+    <input type="range" id="slider" min="0" max="100" value="{{ variable_value }}">
+    <p>Value: <span id="sliderValue">{{ variable_value }}</span></p>
+
+    <script>
+        const slider = document.getElementById('slider');
+        const sliderValue = document.getElementById('sliderValue');
+
+        slider.addEventListener('input', function() {
+            const value = slider.value;
+            sliderValue.textContent = value;
+            fetch('/update_value', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ value: value }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        });
+    </script>
+</body>
+</html>
