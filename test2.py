@@ -12,7 +12,7 @@ print()
 transactions = pd.read_csv('tx_etf.csv', parse_dates=['date']).set_index('date', drop=True)
 prices = pd.read_csv('px_etf.csv', parse_dates=['Date']).set_index('Date', drop=True)
 
-tx = transactions.iloc[0:700]
+tx = transactions.iloc[0:700].copy() # otherwise we get the annoying view vs. copy error
 pd.to_datetime(tx.index)
 
 # Add a column that equals qty if order=BUY and -qty if order=SELL
@@ -74,7 +74,7 @@ for date in positions.index:
         
 
 print("Portfolio values for each ETF...")
-print(values.head())
+print(values.round(2).head())
 print()
 
 # Calculate the portfolio values
@@ -145,13 +145,16 @@ print("Annual Sharpe Ratio 1% risk free rate: ", (annual_pct_change.mean() - ris
 print()
 print()
 
-print("More monthly risk measures...")
+print("More risk measures...")
 print()
 
 # Sortino Ratio: similar to the Sharpe Ratio, but only considers downside risk
-downside_returns = monthly_pct_change.loc[lambda x: x < 0]
-sortino_ratio = (monthly_pct_change.mean() - risk_free_rate) / downside_returns.std()
+downside_monthly_returns = monthly_pct_change.loc[lambda x: x < 0]
+sortino_ratio = (monthly_pct_change.mean() - risk_free_rate) / downside_monthly_returns.std()
 print("Sortino ratio (sampled monthly): ", sortino_ratio)
+downside_annual_returns = annual_pct_change.loc[lambda x: x < 0]
+sortino_ratio = (annual_pct_change.mean() - risk_free_rate) / downside_annual_returns.std()
+print("Sortino ratio (sampled annually): ", sortino_ratio)
 print()
 
 # Maximum drawdown: the largest peak-to-trough decline in the portfolio value.
@@ -160,7 +163,11 @@ peak = cumulative_returns.cummax()
 drawdown = (cumulative_returns - peak) / peak
 max_drawdown = drawdown.min()
 print("Max drawdown (sampled monthly): ", max_drawdown)
-
+cumulative_returns = (1 + annual_pct_change).cumprod()
+peak = cumulative_returns.cummax()
+drawdown = (cumulative_returns - peak) / peak
+max_drawdown = drawdown.min()
+print("Max drawdown (sampled annually): ", max_drawdown)
 
 # need to give the monthly/annually_pct_change (aka the "returns") labels
 
