@@ -27,6 +27,8 @@ functionality like sliders that modify computed values, and Notebook.ipyb should
 a link at the top of the web application. The html is written in templates\index.html.
 [run: python app.py]
 
+The docker container running stats.py is available at https://hub.docker.com/repository/docker/maya4maya4/portfolio_analysis/.
+
 Dockerfile allows docker to build a container image to run app.py. Unfortunately, I had issues
 with building; installing libraries like pandas, flask, etc. was impossible due to
 an SSL connection error, and after a few hours digging around, I found that the official python images 
