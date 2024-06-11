@@ -1,2 +1,4 @@
-pandas
-numpy
+python3-pandas
+python3-matplotlib
+python3-flask
+python3-notebook
